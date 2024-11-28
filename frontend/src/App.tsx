@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import TrackingView from './components/TrackingView.tsx';
+import { sampleProgressData } from './data/sampleProgressData.ts';
 import ProgressView from './components/ProgressView.tsx';
+
 
 interface WeeklyResponse {
   timestamp: string;
@@ -443,16 +445,7 @@ const LifeInsightsApp = () => {
 
       {/* Progress Tab */}
       {activeTab === 'progress' && (
-        <ProgressView
-          weeklyResponses={weeklyResponses}
-          aspectScores={aspectScores}
-          selectedActivities={selectedActivities.map(id => {
-            const activity = recommendedActivities
-              .flatMap(cat => cat.activities)
-              .find(act => act.id === id);
-            return activity?.name || id;
-          })}
-        />
+        <ProgressView progressData={sampleProgressData} />
       )}
     </div>
   );
