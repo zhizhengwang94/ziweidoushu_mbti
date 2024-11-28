@@ -1,5 +1,20 @@
 import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import TrackingView from './components/TrackingView.tsx';
+import ProgressView from './components/ProgressView.tsx';
+
+interface WeeklyResponse {
+  timestamp: string;
+  responses: Record<string, SurveyResponse>;
+  notes: string;
+  selectedActivities: string[];
+  scores: Record<string, AspectScore>;
+}
+
+interface ProgressDataPoint {
+  week: number;
+  [key: string]: number;
+}
 
 const LifeInsightsApp = () => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -386,76 +401,58 @@ const LifeInsightsApp = () => {
 
       {/* Tracking Tab */}
       {activeTab === 'tracking' && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-bold mb-4">Weekly Progress Check</h2>
-          <div className="space-y-6">
-            {weeklyQuestions.map((question, index) => (
-              <div key={index} className="space-y-2">
-                <p className="font-medium">{question}</p>
-                <textarea
-                  className="w-full p-2 border rounded h-24"
-                  placeholder="Your response..."
-                />
-              </div>
-            ))}
-            <button
-              className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              onClick={() => setActiveTab('progress')}
-            >
-              Submit Weekly Review
-            </button>
-          </div>
-        </div>
+        <TrackingView 
+          selectedActivities={selectedActivities.map(id => {
+            const activity = recommendedActivities
+              .flatMap(cat => cat.activities)
+              .find(act => act.id === id);
+            return activity?.name || id;
+          })}
+          onComplete={(trackingData) => {
+            // Update aspect scores from the survey
+            setAspectScores(prevScores => ({
+              ...prevScores,
+              ...trackingData.scores
+            }));
+
+            // Store the complete response
+            setWeeklyResponses(prev => [...prev, {
+              timestamp: trackingData.timestamp,
+              responses: trackingData.responses,
+              notes: trackingData.notes,
+              selectedActivities: selectedActivities,
+              scores: trackingData.scores
+            }]);
+
+            // Update progress charts data
+            const newWeeklyData = {
+              week: weeklyResponses.length + 1,
+              ...Object.entries(trackingData.scores).reduce((acc, [aspect, score]) => ({
+                ...acc,
+                [aspect]: score.total
+              }), {})
+            };
+
+            mockProgressData.push(newWeeklyData);
+
+            // Move to progress view
+            setActiveTab('progress');
+          }}
+        />
       )}
 
       {/* Progress Tab */}
       {activeTab === 'progress' && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-bold mb-4">Growth Journey</h2>
-          <div className="space-y-8">
-            {Object.entries(aspectScores || {}).map(([aspect, _]) => {
-              const aspectData = [
-                { week: 1, score: mockProgressData[0].score },
-                { week: 2, score: mockProgressData[1].score },
-                { week: 3, score: mockProgressData[2].score },
-              ];
-              return (
-                <div key={aspect} className="border-b pb-6">
-                  <h3 className="text-lg font-semibold capitalize mb-2">{aspect}</h3>
-                  <div className="h-64">
-                    <LineChart width={600} height={200} data={aspectData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="week" />
-                      <YAxis domain={[0, 100]} />
-                      <Tooltip />
-                      <Line 
-                        type="monotone" 
-                        dataKey="score" 
-                        stroke="#8884d8" 
-                        name={`${aspect} Score`}
-                      />
-                    </LineChart>
-                  </div>
-                </div>
-              );
-            })}
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-3">Your Selected Activities</h3>
-              <div className="space-y-2">
-                {selectedActivities.map(activityId => {
-                  const activity = recommendedActivities
-                    .flatMap(cat => cat.activities)
-                    .find(act => act.id === activityId);
-                  return (
-                    <div key={activityId} className="p-2 bg-gray-50 rounded">
-                      {activity?.name}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
+        <ProgressView
+          weeklyResponses={weeklyResponses}
+          aspectScores={aspectScores}
+          selectedActivities={selectedActivities.map(id => {
+            const activity = recommendedActivities
+              .flatMap(cat => cat.activities)
+              .find(act => act.id === id);
+            return activity?.name || id;
+          })}
+        />
       )}
     </div>
   );
